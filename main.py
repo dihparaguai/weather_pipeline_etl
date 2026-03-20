@@ -1,5 +1,5 @@
 from loguru import logger
-from src.jobs.extraction_job import run_extraction
+from src.jobs.extraction import run_extraction
 
 def main():
     logger.info("=== Iniciando Pipeline ETL ===")
