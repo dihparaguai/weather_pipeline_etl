@@ -15,11 +15,13 @@ def run_extraction(city_name: str = "Sao Paulo,BR") -> dict:
         data = fetch_weather_data(city_name)
         
         # Garante que a pasta 'data' exista para não quebrar caso seja apagada
-        os.makedirs("data", exist_ok=True)
+        os.makedirs("data/bronze", exist_ok=True)
+        
+        city_name_formatted = city_name.replace(",", "_").replace(" ", "_")
         
         # Monta o nome do arquivo com a data e hora atual
-        filename = f"raw_weather_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
-        filepath = os.path.join("data", filename)
+        filename = f"{city_name_formatted}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filepath = os.path.join("data/bronze", filename)
         
         # Salva o dicionário JSON inteiro no arquivo
         with open(filepath, "w", encoding="utf-8") as f:
