@@ -4,9 +4,9 @@ from datetime import datetime
 from loguru import logger
 from src.modules.weather_api import fetch_weather_data
 
-def run_extraction(city_name: str = "Sao Paulo,BR") -> dict:
+def run_extraction(city_name: str = "Sao Paulo,BR") -> str:
     """
-    Job de extração que chama a API e salva os dados brutos na pasta 'data/'.
+    Job de extração que chama a API e salva os dados brutos na pasta 'data/bronze'.
     """
     logger.info("Iniciando a extração dos dados...")
     
@@ -20,7 +20,7 @@ def run_extraction(city_name: str = "Sao Paulo,BR") -> dict:
         city_name_formatted = city_name.replace(",", "_").replace(" ", "_")
         
         # Monta o nome do arquivo com a data e hora atual
-        filename = f"{city_name_formatted}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        filename = f"{city_name_formatted}_{datetime.now().strftime('%Y%m%d')}.json"
         filepath = os.path.join("data/bronze", filename)
         
         # Salva o dicionário JSON inteiro no arquivo
@@ -28,6 +28,6 @@ def run_extraction(city_name: str = "Sao Paulo,BR") -> dict:
             json.dump(data, f, ensure_ascii=False, indent=4)
             
         logger.info(f"Dados salvos com sucesso no arquivo: {filepath}")
-        return data
+        return filepath
     except Exception as e:
         raise Exception(f"Erro durante a extração: {e}")
