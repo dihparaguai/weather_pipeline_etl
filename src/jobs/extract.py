@@ -4,9 +4,9 @@ from datetime import datetime
 from loguru import logger
 from src.modules.weather_api import fetch_weather_data
 
-def run_extraction(city_name: str = "Sao Paulo,BR") -> str:
+def run_extract(city_name: str = "Sao Paulo,BR") -> str:
     """
-    Job de extração que chama a API e salva os dados brutos na pasta 'data/bronze'.
+    Chama a API e salva os dados brutos na pasta 'data/bronze'.
     """
     logger.info("Iniciando a extração dos dados...")
     

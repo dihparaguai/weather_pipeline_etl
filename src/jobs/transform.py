@@ -91,7 +91,7 @@ def save_to_silver_parquet(df: pd.DataFrame, bronze_file_path: str) -> str:
     logger.info(f"Dados salvos com sucesso na camada Silver.")
     return silver_path
 
-def run_transformation_pipeline(bronze_file_path: str) -> pd.DataFrame:
+def run_transform(bronze_file_path: str) -> pd.DataFrame:
     """
     Executa as  funções de transformação em sequência.
     """
