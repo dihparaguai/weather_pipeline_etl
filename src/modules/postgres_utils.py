@@ -1,5 +1,6 @@
 import os
 import pandas as pd
+from urllib.parse import quote_plus
 from sqlalchemy import create_engine
 from loguru import logger
 from dotenv import load_dotenv
@@ -16,12 +17,12 @@ class PostgresUtils:
     def __init__(self):
         # Credenciais Definitivas extraídas do .env
         self.user = os.getenv("PG_USER")
-        self.password = os.getenv("PG_PASSWORD")
+        self.password = quote_plus(os.getenv("PG_PASSWORD"))
         self.host = os.getenv("PG_HOST")
         self.port = os.getenv("PG_PORT")
         self.dbname = os.getenv("PG_DB")
         
-        # Inicia a Engine de cara
+        # Deixa a engine da classe pré-pronta para ser usada com o to_sql do Pandas
         self.engine = self._create_engine()
 
     def _create_engine(self):
@@ -29,6 +30,10 @@ class PostgresUtils:
         Gera a Engine do SQLAlchemy para conexão.
         """
         logger.info(f"Conectando ao PostgreSQL '{self.dbname}' em {self.host}:{self.port} com usuário '{self.user}'")
-        conn_str = f"postgresql://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
+        
+        # Padrão nativo do SQLAlchemy
+        conn_str = f"postgresql+psycopg2://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
+        logger.debug(f"String de conexão: {conn_str}")
+        
         logger.info(f"Conexão estabelecida com sucesso!")
         return create_engine(conn_str)

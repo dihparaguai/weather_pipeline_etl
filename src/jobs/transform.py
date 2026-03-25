@@ -87,7 +87,7 @@ def save_to_silver_parquet(df: pd.DataFrame, bronze_file_path: str) -> str:
     silver_path = os.path.join("data/silver", bronze_file_path.replace('.json', '.parquet').split('/')[-1])
     
     logger.info(f"Salvando dados processados na camada Silver: {silver_path}")
-    df.to_parquet(silver_path, index=False)
+    df.to_parquet(silver_path, engine='pyarrow', index=False)
     logger.info(f"Dados salvos com sucesso na camada Silver.")
     return silver_path
 
