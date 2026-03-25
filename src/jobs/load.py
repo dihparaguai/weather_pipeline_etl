@@ -2,7 +2,7 @@ import pandas as pd
 from loguru import logger
 from src.modules.postgres_utils import PostgresUtils
 
-def run_load(silver_file_path: str, table_name: str = 'weather_data'):
+def run_load(silver_file_path: str, table_name: str = 'tb_weather_data'):
     """
     Lê o Parquet estruturado da camada Silver e persiste na camada Gold/DWH.
     """
