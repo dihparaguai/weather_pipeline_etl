@@ -13,7 +13,7 @@ Estruturar o fluxo automatizado de extração diária de dados climáticos consu
 - **[PostgreSQL](https://www.postgresql.org/docs/)**: Servidor de banco de dados relacional atuando como Data Warehouse local.
 - **[SQLAlchemy](https://docs.sqlalchemy.org/)**: Comunicação ORM para inserção de DataFrames de forma automatizada no PostgreSQL.
 - **[Loguru](https://loguru.readthedocs.io/)**: Padronização e estruturação dos logs de execução das rotinas.
-- **[Power BI](https://learn.microsoft.com/power-bi/)**: Ferramenta de visualização final de BI alimentada pela base relacional tratada na Camada Gold.
+- **[Power BI](https://learn.microsoft.com/power-bi/)**: Ferramenta de visualização final de BI alimentada pela base relacional tratada no PostgresSQL (camada Gold).
 
 ## 3. Estrutura do Projeto
 ```text
@@ -44,13 +44,13 @@ PG_PORT=5432
 PG_DB=seu_banco_de_dados
 
 # Força a instalação nativa destas bibliotecas durante a criação do container Airflow
-_PIP_ADDITIONAL_REQUIREMENTS="loguru pyarrow pandas"
+_PIP_ADDITIONAL_REQUIREMENTS="loguru pyarrow pandas psycopg2-binary"
 ```
 
 ### 4.2 Mapeamento de Rede Host para WSL/Docker
-Como a infraestrutura do Airflow opera em containers, é necessário configurar o PostgreSQL instalado na máquina local do host Windows a autorizar requisições das sub-redes Docker e WSL (se usado) nas portas:
+Como a infraestrutura do Airflow opera em containers, é necessário configurar o PostgreSQL instalado na máquina local do host Windows a autorizar requisições das sub-redes Docker e WSL (se usado):
 
-1. Modifique o arquivo `pg_hba.conf` do PostgreSQL Server inserindo os direcionamentos IP ativando o md5:
+1. Modifique o arquivo `pg_hba.conf` do PostgreSQL Server inserindo os direcionamentos IP:
 ```conf
 # Acesso interno para serviços Docker
 host    all    all    172.18.0.0/16     md5
@@ -62,7 +62,7 @@ host    all    all    192.168.0.0/24    md5
 ### 4.3 Criação do Banco e Permissões de Esquema
 Como a aplicação opera sob o princípio de mínimo privilégio, é necessário criar previamente o usuário de conexão configurado no `.env` e seu respectivo escopo.
 
-Acesse o PostgreSQL do host Windows como superusuário (geralmente `postgres`) e execute sequencialmente as DDLs e os direcionamentos de privilégio no schema `public`:
+Acesse o PostgreSQL do host Windows como superusuário (geralmente `postgres`) e execute sequencialmente:
 ```sql
 -- Crie o usuário no Postgres apenas se necessário
 CREATE USER seu_usuario_postgres WITH PASSWORD 'sua_senha_postgres';
