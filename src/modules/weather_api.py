@@ -7,7 +7,7 @@ from datetime import date
 # Carrega as variáveis do arquivo .env
 load_dotenv()
 
-def download_weather_data(city_name: str = "Sao Paulo,BR", target_date: date = None) -> dict:
+def download_weather_data(target_date: date, city_name: str = "Sao Paulo,BR") -> dict:
     """
     Busca os dados de clima da OpenWeatherMap API para a cidade especificada.
     """
@@ -17,9 +17,6 @@ def download_weather_data(city_name: str = "Sao Paulo,BR", target_date: date = N
     if not api_key:
         logger.error("A variável WEATHER_API_KEY não foi encontrada (verifique seu .env).")
         raise ValueError("A variável WEATHER_API_KEY não foi encontrada (verifique seu .env).")
-    
-    if target_date is None:
-        target_date = date.today()
 
     # 'q' = cidade alvo | 'units=metric' = formato em graus Celsius | 'start_date' and 'end_date' = data alvo | 'appid' = chave de autenticação
     # OBS: A api openweather não aceita o parâmetro 'start_date' e 'end_date' para o endpoint 'weather', apenas para 'onecall' ou 'history', mas esses endpoints não são gratuitos

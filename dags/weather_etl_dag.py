@@ -10,8 +10,6 @@ sys.path.insert(0, "/opt/airflow")
 logger.remove()  # Remove o handler padrão do Loguru
 logger.add(sys.stdout, level="DEBUG")  # Adiciona um handler explícito para stdout
 
-
-
 from src.jobs.extract import run_extract
 from src.jobs.transform import run_transform
 from src.jobs.load import run_load

@@ -13,7 +13,11 @@ def run_extract(city_name: str = "Sao Paulo,BR", target_date: date = None) -> st
     
     try:
         logger.debug(f"Chamando a função download_weather_data com a cidade: '{city_name}'")
-        data = download_weather_data(city_name, target_date)
+            
+        if target_date is None:
+            target_date = date.today()
+        
+        data = download_weather_data(target_date, city_name)
         
         # Garante que a pasta 'data' exista para não quebrar caso seja apagada
         os.makedirs("data/bronze", exist_ok=True)
