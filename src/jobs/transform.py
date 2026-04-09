@@ -8,23 +8,37 @@ import pyarrow
 
 datetime_columns_to_cast = ['dt', 'sys_sunrise', 'sys_sunset']
 
-def create_dataframe(path_name: str) -> pd.DataFrame:
+def create_dataframe(bronze_files_path: str = './data/bronze') -> pd.DataFrame:
     """
     Lê o JSON do caminho fornecido em disco e converte em um DataFrame.
     """
-    logger.info(f"Lendo e serializando dados do JSON: {path_name}")
-    try:
-        # Lê o arquivo JSON
-        with open(path_name, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            
-        # Normaliza o JSON em um DataFrame
-        df = pd.json_normalize(data)
-        logger.info("DataFrame criado com sucesso.")
-        return df
-    except Exception as e:
-        logger.error(f"Erro ao criar o DataFrame: {e}")
-        raise
+    json_files_list = [f for f in os.listdir(bronze_files_path) if f.endswith(".json")]
+
+    df_list = []
+
+    for file in json_files_list:
+        path_name = os.path.join(bronze_files_path, file)
+
+        logger.info(f"Lendo e serializando dados do JSON: {path_name}")
+        try:
+            # Lê o arquivo JSON
+            with open(path_name, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                
+            # Normaliza o JSON em um DataFrame
+            df = pd.json_normalize(data)
+            df_list.append(df)
+            logger.debug(f"DataFrame de {file} criado com sucesso.")
+        except Exception as e:
+            logger.error(f"Erro ao criar o DataFrame: {e}")
+            raise
+    
+    # Concatena todos os DataFrames em um só, reorganiza os indices
+    logger.info("Concatenando todos os DataFrames em um só.")
+    df_concat = pd.concat(df_list, ignore_index=True)
+    
+    logger.info(f"DataFrame criado com sucesso.")
+    return df_concat
 
 def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
     """
