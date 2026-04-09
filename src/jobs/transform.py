@@ -6,7 +6,12 @@ from loguru import logger
 import pyarrow
 
 
-datetime_columns_to_cast = ['dt', 'sys_sunrise', 'sys_sunset']
+datetime_columns_to_cast = ['datetime', 'nascer_do_sol', 'por_do_sol']
+
+columns_to_drop = ['base', 'visibility', 'timezone', 'id', 'main.pressure', 'main.sea_level', 'main.grnd_level', 'wind.speed', 'wind.deg', 'clouds.all', 'sys.type', 'sys.id']
+
+columns_to_rename = {'dt': 'datetime', 'name': 'cidade', 'coord.lon': 'longitude', 'coord.lat': 'latitude', 'main.temp': 'temperatura', 'main.feels_like': 'sensacao_termica', 'main.temp_min': 'temperatura_minima', 'main.temp_max': 'temperatura_maxima', 'main.humidity': 'umidade', 'sys.country': 'pais', 'sys.sunrise': 'nascer_do_sol', 'sys.sunset': 'por_do_sol'}
+
 
 def create_dataframe(bronze_files_path: str = './data/bronze') -> pd.DataFrame:
     """
@@ -40,14 +45,22 @@ def create_dataframe(bronze_files_path: str = './data/bronze') -> pd.DataFrame:
     logger.info(f"DataFrame criado com sucesso.")
     return df_concat
 
-def rename_columns(df: pd.DataFrame) -> pd.DataFrame:
+def drop_columns(df: pd.DataFrame, columns_to_drop: List[str]) -> pd.DataFrame:
     """
-    Substitui espaços e pontos (.) por underscores (_) em todos os nomes de colunas.
+    Remove as colunas desnecessárias do DataFrame.
     """
-    logger.info("Aplicando Regex para padronização das colunas no DataFrame.")
-    # df.columns renomeia todas as colunas de uma vez quando é atribuído uma lista de mesmo tamanho
-    df.columns = df.columns.str.replace(r'[\s\.]', '_', regex=True)
-    logger.debug(f"Colunas renomeadas com sucesso.")
+    logger.info(f"Removendo as colunas.")
+    df = df.drop(columns=columns_to_drop)
+    logger.info(f"Colunas removidas com sucesso.")
+    return df
+
+def rename_columns(df: pd.DataFrame, columns_to_rename: dict) -> pd.DataFrame:
+    """
+    Renomeia as colunas para melhor legibilidade.
+    """
+    logger.info("Renomeando as colunas.")
+    df = df.rename(columns=columns_to_rename)
+    logger.info(f"Colunas renomeadas com sucesso.")
     return df
 
 def normalize_column(df: pd.DataFrame, column_name: str = 'weather') -> pd.DataFrame:
@@ -113,7 +126,8 @@ def run_transform(bronze_file_path: str) -> pd.DataFrame:
     
     df = create_dataframe(bronze_file_path)
     df = normalize_column(df, column_name='weather')
-    df = rename_columns(df)
+    df = drop_columns(df, columns_to_drop=columns_to_drop)
+    df = rename_columns(df, columns_to_rename=columns_to_rename)
     df = cast_datetime_columns(df, datetime_columns=datetime_columns_to_cast)
     silver_path = save_to_silver_parquet(df, bronze_file_path)
     
