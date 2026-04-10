@@ -1,24 +1,38 @@
-# import os
-# from loguru import logger
-# from src.jobs.extract import run_extract
-# from src.jobs.transform import run_transform
-# from src.jobs.load import run_load
+import os
+from loguru import logger
+from src.jobs.extract import run_extract
+from src.jobs.transform import run_transform
+from src.jobs.load import run_load
+from datetime import date
 
-# def main():
-#     logger.info("=== Iniciando Pipeline ETL ===")
+def main():
+    logger.info("=== Iniciando Pipeline ETL ===")
     
-#     # Etapa 1: Extração (Extract)
-#     bronze_file_path = run_extract()
-#     logger.info(f"Extração Bronze concluída. Arquivo gerado: {bronze_file_path}")
-    
-#     # Etapa 2: Transformação (Transform)
-#     silver_file_path = run_transform(bronze_file_path)
-#     logger.info("Transformação Silver concluída.")
-    
-#     # Etapa 3: Carga (Load)
-#     run_load(silver_file_path)
-    
-#     logger.info("=== Pipeline Finalizado ===")
+    cities_names_list = [
+        'Sao Paulo,BR', 'Rio de Janeiro,BR', 'Belo Horizonte,BR', 'Curitiba,BR', 
+        'Porto Alegre,BR', 'Recife,BR', 'Salvador,BR', 'Fortaleza,BR', 
+        'Brasilia,BR', 'Manaus,BR', 'Belem,BR', 'Goiania,BR', 
+        'Campo Grande,BR', 'Florianopolis,BR', 'Vitoria,BR', 'Sao Luis,BR', 
+        'Teresina,BR', 'Natal,BR', 'Joao Pessoa,BR', 'Maceio,BR',
+        'Cuiaba,BR', 'Porto Velho,BR', 'Boa Vista,BR', 'Aracaju,BR',
+        'Palmas,BR', 'Macapa,BR', 'Rio Branco,BR'
+    ]
 
-# if __name__ == "__main__":
-#     main()
+    target_date = date.today()
+
+    # Etapa 1: Extração (Extract)
+    bronze_folder_path = run_extract(cities_names_list, target_date, './data/bronze')
+    logger.info(f"Extração Bronze concluída.")
+    
+    # Etapa 2: Transformação (Transform)
+    silver_file_path = run_transform(bronze_folder_path, './data/silver')
+    logger.info("Transformação Silver concluída.")
+    
+    # Etapa 3: Carga (Load)
+    # run_load(silver_file_path)
+    # logger.info("Carga Gold concluída.")
+    
+    logger.info("=== Pipeline Finalizado ===")
+
+if __name__ == "__main__":
+    main()

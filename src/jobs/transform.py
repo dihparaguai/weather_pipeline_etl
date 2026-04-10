@@ -4,16 +4,17 @@ import pandas as pd
 from typing import List
 from loguru import logger
 import pyarrow
+from datetime import date
 
 
 datetime_columns_to_cast = ['datetime', 'nascer_do_sol', 'por_do_sol']
 
-columns_to_drop = ['base', 'visibility', 'timezone', 'id', 'main.pressure', 'main.sea_level', 'main.grnd_level', 'wind.speed', 'wind.deg', 'clouds.all', 'sys.type', 'sys.id']
+columns_to_drop = ['base', 'visibility', 'timezone', 'id', 'main.pressure', 'main.sea_level', 'main.grnd_level', 'wind.speed', 'wind.deg', 'clouds.all']
 
 columns_to_rename = {'dt': 'datetime', 'name': 'cidade', 'coord.lon': 'longitude', 'coord.lat': 'latitude', 'main.temp': 'temperatura', 'main.feels_like': 'sensacao_termica', 'main.temp_min': 'temperatura_minima', 'main.temp_max': 'temperatura_maxima', 'main.humidity': 'umidade', 'sys.country': 'pais', 'sys.sunrise': 'nascer_do_sol', 'sys.sunset': 'por_do_sol'}
 
 
-def create_dataframe(bronze_files_path: str = './data/bronze') -> pd.DataFrame:
+def create_dataframe(bronze_files_path: str) -> pd.DataFrame:
     """
     Lê o JSON do caminho fornecido em disco e converte em um DataFrame.
     """
@@ -21,10 +22,11 @@ def create_dataframe(bronze_files_path: str = './data/bronze') -> pd.DataFrame:
 
     df_list = []
 
+    logger.info(f"Lendo e serializando dados da pasta: {bronze_files_path}")
     for file in json_files_list:
         path_name = os.path.join(bronze_files_path, file)
 
-        logger.info(f"Lendo e serializando dados do JSON: {path_name}")
+        logger.debug(f"Lendo e serializando dados do JSON: {path_name}")
         try:
             # Lê o arquivo JSON
             with open(path_name, 'r', encoding='utf-8') as f:
@@ -104,32 +106,35 @@ def cast_datetime_columns(df: pd.DataFrame, datetime_columns: List[str], timezon
     logger.info(f"Colunas de Data/Hora convertidas com sucesso.")
     return df
 
-def save_to_silver_parquet(df: pd.DataFrame, bronze_file_path: str) -> str:
+def save_to_silver_parquet(df: pd.DataFrame, silver_folder_path: str, target_date: str) -> str:
     """
     Exporta o DataFrame transformado para um arquivo Parquet na camada Silver.
     """
-    os.makedirs("data/silver", exist_ok=True)
 
-    # Pega o nome do arquivo base, troca a extensão e junta com o caminho da pasta
-    silver_path = os.path.join("data/silver", bronze_file_path.replace('.json', '.parquet').split('/')[-1])
+    os.makedirs(silver_folder_path, exist_ok=True)
+
+    file_name = f'{target_date}.parquet'
+    file_path = os.path.join(silver_folder_path, file_name)
     
-    logger.info(f"Salvando dados processados na camada Silver: {silver_path}")
-    df.to_parquet(silver_path, engine='pyarrow', index=False)
+    logger.info(f"Salvando dados processados na camada Silver: {file_path}")
+    df.to_parquet(file_path, engine='pyarrow', index=False)
     logger.info(f"Dados salvos com sucesso na camada Silver.")
-    return silver_path
+    return file_path
 
-def run_transform(bronze_file_path: str) -> pd.DataFrame:
+def run_transform(bronze_file_path: str, silver_folder_path: str = './data/silver') -> pd.DataFrame:
     """
     Executa as  funções de transformação em sequência.
     """
-    logger.info(f"=== Iniciando fluxo completo de Transformação para: {bronze_file_path} ===")
+    logger.info(f"=== Iniciando transformação dos dados... ===")
+
+    target_date = bronze_file_path.split('/')[-1]
     
     df = create_dataframe(bronze_file_path)
     df = normalize_column(df, column_name='weather')
     df = drop_columns(df, columns_to_drop=columns_to_drop)
     df = rename_columns(df, columns_to_rename=columns_to_rename)
     df = cast_datetime_columns(df, datetime_columns=datetime_columns_to_cast)
-    silver_path = save_to_silver_parquet(df, bronze_file_path)
+    silver_file_path = save_to_silver_parquet(df, silver_folder_path=silver_folder_path, target_date=target_date)
     
-    logger.info(f"=== Transformação Executada com Sucesso! Parquet gerado: {silver_path} ===")
-    return silver_path
+    logger.info(f"=== Transformação Executada com Sucesso! ===")
+    return silver_file_path
