@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from urllib.parse import quote_plus
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from loguru import logger
 from dotenv import load_dotenv
 
@@ -34,6 +34,14 @@ class PostgresUtils:
         # Padrão nativo do SQLAlchemy
         conn_str = f"postgresql+psycopg2://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
         logger.debug(f"String de conexão: {conn_str}")
+        engine = create_engine(conn_str)
         
-        logger.info(f"Conexão estabelecida com sucesso!")
-        return create_engine(conn_str)
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            logger.info(f"Conexão estabelecida com sucesso!")
+        except Exception as e:
+            logger.error(f"Falha ao conectar ao PostgreSQL: {e}")
+            raise
+        
+        return engine
