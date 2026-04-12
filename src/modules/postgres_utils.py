@@ -38,10 +38,14 @@ class PostgresUtils:
         
         try:
             with engine.connect() as conn:
+                logger.debug(f"Testando conexão com o PostgreSQL")
                 conn.execute(text("SELECT 1"))
-            logger.info(f"Conexão estabelecida com sucesso!")
+            
         except Exception as e:
             logger.error(f"Falha ao conectar ao PostgreSQL: {e}")
             raise
         
+        logger.info(f"Conexão estabelecida com sucesso!")
         return engine
+
+PostgresUtils()

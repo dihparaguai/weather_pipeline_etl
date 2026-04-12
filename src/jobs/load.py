@@ -1,6 +1,38 @@
 import pandas as pd
 from loguru import logger
 from src.modules.postgres_utils import PostgresUtils
+from sqlalchemy import text, inspect
+from typing import Optional
+from datetime import date
+
+def get_max_date_from_db(db_engine, table_name: str, column_name: str) -> date:
+    """
+    Busca a data mais recente armazenada na tabela alvo.
+    """
+    # Inspeciona o schema do banco de dados
+    inspector = inspect(db_engine)
+    
+    # Verifica se a tabela existe usando o Inspetor
+    if not inspector.has_table(table_name):
+        logger.info(f"Tabela '{table_name}' não detectada.")
+        return None
+        
+    # Verifica se a coluna existe usando o Inspetor
+    columns = [col['name'] for col in inspector.get_columns(table_name)]
+    if column_name not in columns:
+        raise ValueError(f"A tabela '{table_name}' existe, mas a coluna'{column_name}' não foi encontrada!")
+        
+    # Executa a extração da data máxima
+    query_str = f"SELECT MAX({column_name}) AS max_date FROM {table_name}"
+    max_date_df = pd.read_sql(text(query_str), con=db_engine)
+    max_date_db = max_date_df['max_date'].iloc[0]
+    
+    # Verifica se a data máxima é nula
+    if pd.notnull(max_date_db):
+        return pd.to_datetime(max_date_db).date()
+    else:
+        logger.info(f"A coluna '{column_name}' da tabela '{table_name}' está vazia.")
+        return None
 
 def run_load(silver_file_path: str, table_name: str = 'tb_weather_data'):
     """
