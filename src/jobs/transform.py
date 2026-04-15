@@ -18,15 +18,16 @@ def create_dataframe(bronze_files_path: str) -> pd.DataFrame:
     """
     Lê o JSON do caminho fornecido em disco e converte em um DataFrame.
     """
+    logger.info(f"Lendo e serializando dados da pasta: {bronze_files_path}...")
+    
     json_files_list = [f for f in os.listdir(bronze_files_path) if f.endswith(".json")]
 
     df_list = []
 
-    logger.info(f"Lendo e serializando dados da pasta: {bronze_files_path}")
     for file in json_files_list:
         path_name = os.path.join(bronze_files_path, file)
 
-        logger.debug(f"Lendo e serializando dados do JSON: {path_name}")
+        logger.debug(f"Lendo e serializando dados do JSON: {path_name}.")
         try:
             # Lê o arquivo JSON
             with open(path_name, 'r', encoding='utf-8') as f:
@@ -44,32 +45,37 @@ def create_dataframe(bronze_files_path: str) -> pd.DataFrame:
     logger.info("Concatenando todos os DataFrames em um só.")
     df_concat = pd.concat(df_list, ignore_index=True)
     
-    logger.info(f"DataFrame criado com sucesso.")
+    logger.info(f"DataFrame concatenado criado com sucesso!")
     return df_concat
 
 def drop_columns(df: pd.DataFrame, columns_to_drop: List[str]) -> pd.DataFrame:
     """
     Remove as colunas desnecessárias do DataFrame.
     """
-    logger.info(f"Removendo as colunas.")
+    logger.info(f"Removendo as colunas...")
+    
     df = df.drop(columns=columns_to_drop)
-    logger.info(f"Colunas removidas com sucesso.")
+    
+    logger.info(f"Colunas removidas com sucesso!")
     return df
 
 def rename_columns(df: pd.DataFrame, columns_to_rename: dict) -> pd.DataFrame:
     """
     Renomeia as colunas para melhor legibilidade.
     """
-    logger.info("Renomeando as colunas.")
+    logger.info("Renomeando as colunas...")
+    
     df = df.rename(columns=columns_to_rename)
-    logger.info(f"Colunas renomeadas com sucesso.")
+    
+    logger.info(f"Colunas renomeadas com sucesso!")
     return df
 
 def normalize_column(df: pd.DataFrame, column_name: str = 'weather') -> pd.DataFrame:
     """
-    Normaliza a coluna recebida, que é uma lista de dicionários
+    Explode a coluna recebida (lista de dicionários) em colunas separadas.
     """
     logger.info(f"Explodindo a coluna '{column_name}'...")
+    
     try:
         if column_name not in df.columns:
             logger.warning(f"Coluna '{column_name}' não encontrada no DataFrame.")
@@ -85,40 +91,44 @@ def normalize_column(df: pd.DataFrame, column_name: str = 'weather') -> pd.DataF
         df = pd.concat([df, df_column_list_renamed], axis=1)
         df = df.drop(columns=[column_name], errors='ignore')
         
-        logger.info(f"Colunas de {column_name} normalizadas com sucesso.")
+        logger.info(f"Colunas de {column_name} explodidas com sucesso!")
         return df
+    
     except Exception as e:
-        logger.error(f"Erro na normalização JSON do array '{column_name}': {e}")
+        logger.error(f"Erro na explosão JSON do array '{column_name}': {e}")
         raise
 
 def cast_datetime_columns(df: pd.DataFrame, datetime_columns: List[str], timezone: str = 'America/Sao_Paulo') -> pd.DataFrame:
     """
     Converte uma lista de colunas (unix timestamp/segundos) para datetime no fuso horário local.
     """
-    logger.info(f"Ajustando a coluna em segundos (UTC) para a TimeZone: {timezone}.")
+    logger.info(f"Convertendo colunas de unix timestamp para datetime...")
+    
     for col in datetime_columns:
         if col in df.columns:
             logger.debug(f"Convertendo a coluna: {col}")
             # Converte de segundos (timestamp unit='s') para UTC e ajusta para o fuso horário
             df[col] = pd.to_datetime(df[col], unit='s', utc=True).dt.tz_convert(timezone)
         else:
-            logger.warning(f"Coluna '{col}' mapeada para formatação de Data/Hora não existe no DF.")
-    logger.info(f"Colunas de Data/Hora convertidas com sucesso.")
+            logger.warning(f"Coluna {col} não encontrada no DataFrame.")
+    
+    logger.info(f"Colunas de unix timestamp convertidas para datetime com sucesso!")
     return df
 
 def save_to_silver_parquet(df: pd.DataFrame, silver_folder_path: str, target_date: str) -> str:
     """
     Exporta o DataFrame transformado para um arquivo Parquet na camada Silver.
     """
-
+    logger.info(f"Salvando dados processados na camada Silver: {file_path}...")
+    
     os.makedirs(silver_folder_path, exist_ok=True)
 
     file_name = f'{target_date}.parquet'
     file_path = os.path.join(silver_folder_path, file_name)
     
-    logger.info(f"Salvando dados processados na camada Silver: {file_path}")
     df.to_parquet(file_path, engine='pyarrow', index=False)
-    logger.info(f"Dados salvos com sucesso na camada Silver.")
+    
+    logger.info(f"Dados salvos com sucesso na camada Silver!")
     return file_path
 
 def run_transform(bronze_file_path: str, silver_folder_path: str) -> pd.DataFrame:
