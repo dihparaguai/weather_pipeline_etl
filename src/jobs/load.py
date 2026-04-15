@@ -39,6 +39,38 @@ def get_max_date_from_db(db_engine, table_name: str, column_name: str) -> dateti
         logger.info(f"A coluna '{column_name}' da tabela '{table_name}' está vazia.")
         return None
 
+def filter_incremental_file(silver_folder_path: str, max_date: datetime.date) -> list:
+    """
+    Filtra os arquivos na camada Silver, retornando apenas os paths dos arquivos a serem incrementados no Banco.
+    """
+    logger.info("Buscando arquivos Parquet na camada Silver para incrementar...")
+    parquet_list = [p for p in os.listdir(silver_folder_path) if p.endswith('.parquet')]
+
+    # Se não houver arquivos na camada Silver, retorna uma lista vazia
+    if not parquet_list:
+        logger.info("Nenhum arquivo Parquet foi localizado na camada Silver.")
+        return []
+
+    # Se não houver data máxima no banco de dados, retorna todos os arquivos
+    if max_date is None:
+        logger.info("Não há dados no banco de dados. Retornando todos os arquivos.")
+        return [os.path.join(silver_folder_path, p) for p in parquet_list]
+    
+    # Filtra os arquivos que são mais recentes que a data máxima no banco de dados
+    parquet_list_to_increment = []
+    for p in parquet_list:
+        # Extrai a string ('20260412') sem ".parquet"
+        file_date_str = p.split('.')[0] 
+        
+        file_date = datetime.strptime(file_date_str, '%Y%m%d').date()
+        
+        if file_date > max_date:
+            parquet_list_to_increment.append(os.path.join(silver_folder_path, p))
+            logger.debug(f"Arquivo {p} adicionado à lista de incremento.")
+            
+    logger.info(f"{len(parquet_list_to_increment)} arquivo(s) para incrementar.")
+    return parquet_list_to_increment
+
 def run_load(silver_file_path: str, table_name: str = 'tb_weather_data'):
     """
     Lê o Parquet estruturado da camada Silver e persiste na camada Gold/DWH.
