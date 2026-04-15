@@ -2,13 +2,13 @@ import pandas as pd
 from loguru import logger
 from src.modules.postgres_utils import PostgresUtils
 from sqlalchemy import text, inspect
-from typing import Optional
 from datetime import date
 
-def get_max_date_from_db(db_engine, table_name: str, column_name: str) -> date:
+def get_max_date_from_db(db_engine, table_name: str, column_name: str) -> datetime.date:
     """
     Busca a data mais recente armazenada na tabela alvo.
     """
+    logger.info("Buscando a data mais recente na tabela alvo...")
     # Inspeciona o schema do banco de dados
     inspector = inspect(db_engine)
     
@@ -24,12 +24,14 @@ def get_max_date_from_db(db_engine, table_name: str, column_name: str) -> date:
         
     # Executa a extração da data máxima
     query_str = f"SELECT MAX({column_name}) AS max_date FROM {table_name}"
-    max_date_df = pd.read_sql(text(query_str), con=db_engine)
-    max_date_db = max_date_df['max_date'].iloc[0]
+    max_date_db = pd.read_sql(text(query_str), con=db_engine)
+    max_date_df = max_date_db['max_date'].iloc[0]
     
     # Verifica se a data máxima é nula
-    if pd.notnull(max_date_db):
-        return pd.to_datetime(max_date_db).date()
+    if pd.notnull(max_date_df):
+        max_date = pd.to_datetime(max_date_df).date()
+        logger.info(f"Data máxima encontrada: {max_date} {type(max_date)}")
+        return max_date
     else:
         logger.info(f"A coluna '{column_name}' da tabela '{table_name}' está vazia.")
         return None
