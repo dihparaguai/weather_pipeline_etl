@@ -44,33 +44,52 @@ def filter_incremental_file(silver_folder_path: str, max_date: datetime.date) ->
     Filtra os arquivos na camada Silver, retornando apenas os paths dos arquivos a serem incrementados no Banco.
     """
     logger.info("Buscando arquivos Parquet na camada Silver para incrementar...")
-    parquet_list = [p for p in os.listdir(silver_folder_path) if p.endswith('.parquet')]
+    parquet_file_path_list = [p for p in os.listdir(silver_folder_path) if p.endswith('.parquet')]
 
     # Se não houver arquivos na camada Silver, retorna uma lista vazia
-    if not parquet_list:
+    if not parquet_file_path_list:
         logger.info("Nenhum arquivo Parquet foi localizado na camada Silver.")
         return []
 
     # Se não houver data máxima no banco de dados, retorna todos os arquivos
     if max_date is None:
         logger.info("Não há dados no banco de dados. Retornando todos os arquivos.")
-        return [os.path.join(silver_folder_path, p) for p in parquet_list]
+        return [os.path.join(silver_folder_path, p) for p in parquet_file_path_list]
     
     # Filtra os arquivos que são mais recentes que a data máxima no banco de dados
-    parquet_list_to_increment = []
-    for p in parquet_list:
+    parquet_file_path_list_to_increment = []
+    for p in parquet_file_path_list:
         # Extrai a string ('20260412') sem ".parquet"
         file_date_str = p.split('.')[0] 
         
         file_date = datetime.strptime(file_date_str, '%Y%m%d').date()
         
         if file_date > max_date:
-            parquet_list_to_increment.append(os.path.join(silver_folder_path, p))
+            parquet_file_path_list_to_increment.append(os.path.join(silver_folder_path, p))
             logger.debug(f"Arquivo {p} adicionado à lista de incremento.")
             
-    logger.info(f"{len(parquet_list_to_increment)} arquivo(s) para incrementar.")
-    return parquet_list_to_increment
+    logger.info(f"{len(parquet_file_path_list_to_increment)} arquivo(s) para incrementar.")
+    return parquet_file_path_list_to_increment
 
+def concat_parquet_files(parquet_file_path_list: list) -> pd.DataFrame:
+    """
+    Concatena os arquivos Parquet em um único DataFrame.
+    """
+    logger.info("Concatenando arquivos Parquet em um único DataFrame...")
+    
+    # Se não houver arquivos na camada Silver, retorna None
+    if not parquet_file_path_list:
+        logger.info("Nenhum arquivo Parquet foi localizado na camada Silver.")
+        return None
+    
+    # Cria uma lista de DataFrames e concatena em um único DataFrame
+    df_list = []
+    for p in parquet_file_path_list:
+        df_list.append(pd.read_parquet(p, engine='pyarrow'))
+    
+    logger.info(f"DataFrame concatenado com {len(df_list)} arquivos.")
+    return pd.concat(df_list, ignore_index=True)
+    
 def run_load(silver_file_path: str, table_name: str = 'tb_weather_data'):
     """
     Lê o Parquet estruturado da camada Silver e persiste na camada Gold/DWH.

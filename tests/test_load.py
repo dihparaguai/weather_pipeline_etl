@@ -2,11 +2,15 @@ import pandas as pd
 from datetime import date
 import pytest
 
-from src.jobs.load import get_max_date_from_db
-
 # Classe para simular a engine do SQLAlchemy
 class FakeEngine:
     pass
+
+# ================================================================
+# Testes da função get_max_date_from_db
+# ================================================================
+
+from src.jobs.load import get_max_date_from_db
 
 def test_get_max_date_from_db_returns_error_when_table_not_exists(monkeypatch):
     """
@@ -91,6 +95,10 @@ def test_get_max_date_from_db_returns_none_when_table_empty(monkeypatch):
     # Assert
     assert result is None
 
+# ================================================================
+# Testes da função filter_incremental_file
+# ================================================================
+
 from src.jobs.load import filter_incremental_file
 
 def test_filter_incremental_file_returns_empty_list_when_no_files(monkeypatch):
@@ -140,3 +148,35 @@ def test_filter_incremental_file_returns_incremental_files(monkeypatch):
     
     # Assert
     assert result == ['/path/silver/20260414.parquet']
+
+# ================================================================
+# Testes da função concat_parquet_files
+# ================================================================
+
+from src.jobs.load import concat_parquet_files
+
+def test_concat_parquet_files_returns_none_when_no_files(monkeypatch):
+    """
+    CENÁRIO: Valida se a função retorna None quando não há arquivos na camada Silver.
+    """
+    # Act
+    result = concat_parquet_files(parquet_file_path_list=[])
+    
+    # Assert
+    assert result is None
+
+def test_concat_parquet_files_returns_dataframe_concatenated(monkeypatch):
+    """
+    CENÁRIO: Valida se a função retorna um DataFrame concatenado quando há arquivos na camada Silver.
+    """
+    # Arrange
+    def mock_read_parquet(path, engine):
+        return pd.DataFrame({'city': ['Sao Paulo'], 'temperature': [25.0]})
+    
+    monkeypatch.setattr("src.jobs.load.pd.read_parquet", mock_read_parquet)
+    
+    # Act
+    result = concat_parquet_files(parquet_file_path_list=['/path/silver/20260412.parquet', '/path/silver/20260413.parquet'])
+    
+    # Assert
+    assert result.equals(pd.DataFrame({'city': ['Sao Paulo', 'Sao Paulo'], 'temperature': [25.0, 25.0]}))
