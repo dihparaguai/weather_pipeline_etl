@@ -16,14 +16,14 @@ def get_max_date_from_db(db_engine, table_name: str, column_name: str) -> dateti
     # Verifica se a tabela existe usando o Inspetor
     if not inspector.has_table(table_name):
         logger.error(f"A tabela '{table_name}' não foi encontrada!")
-        raise ValueError(f"A tabela '{table_name}' não foi encontrada!")
+        return None
         
     # Verifica se a coluna existe usando o Inspetor
     columns = [col['name'] for col in inspector.get_columns(table_name)]
     logger.debug(f"Colunas encontradas na tabela '{table_name}': {columns}")
     if column_name not in columns:
         logger.error(f"A coluna '{column_name}' não foi encontrada na tabela '{table_name}'!")
-        raise ValueError(f"A tabela '{table_name}' existe, mas a coluna'{column_name}' não foi encontrada!")
+        return None
         
     # Executa a extração da data máxima
     query_str = f"SELECT MAX({column_name}) AS max_date FROM {table_name}"
@@ -89,27 +89,27 @@ def concat_parquet_files(parquet_file_path_list: list) -> pd.DataFrame:
     
     logger.info(f"DataFrame concatenado com {len(df_list)} arquivos.")
     return pd.concat(df_list, ignore_index=True)
-    
-def run_load(silver_file_path: str, table_name: str = 'tb_weather_data'):
-    """
-    Lê o Parquet estruturado da camada Silver e persiste na camada Gold/DWH.
-    """
-    logger.info(f"=== Iniciando a etapa de Carga no PostgreSQL o arquivo: {silver_file_path} ===")
-    
-    try:
-        logger.info(f"Carregando o DataFrame a partir de: {silver_file_path}")
-        # Transforma o arquivo Parquet em um DataFrame
-        df = pd.read_parquet(silver_file_path, engine='pyarrow')
 
-        # Abre a porta com o banco via SQLAlchemy usando as credenciais do .env
-        db_connection = PostgresUtils()
-        
-        logger.info(f"Inserindo {len(df)} registros diretamente na tabela postgres '{table_name}'")
-        # Injeta o DataFrame no PostegreSQL. Usa 'append' para apenas adicionar sem apagar os dias anteriores
-        df.to_sql(name=table_name, con=db_connection.engine, if_exists='append', index=False)
-        
-        logger.info("=== Carga finalizada com sucesso! Dados seguros no banco. ===")
-        
-    except Exception as e:
-        logger.error(f"Falha durante a injeção de dados no PostgreSQL: {e}")
-        raise
+def save_to_db(db_engine, df: pd.DataFrame, table_name: str):
+    """
+    Adiciona os dados do DataFrame no banco de dados.
+    """
+    logger.info(f"Adicionando os dados do DataFrame na tabela '{table_name}'...")
+
+    # Usa 'append' do Pandas para apenas adicionar sem apagar os dias anteriores
+    df.to_sql(name=table_name, con=db_engine, if_exists='append', index=False)
+
+    logger.info("Dados adicionados com sucesso!")
+
+def run_load(silver_file_path: str = '../../data/silver', table_name: str = 'tb_weather_data'):
+    """
+    Executa as funções de carga em sequência.
+    """
+    db_connection = PostgresUtils()
+    db_engine = db_connection.engine
+
+    logger.info(f"=== Iniciando a etapa de Carga no PostgreSQL ===")
+    max_date_db = get_max_date_from_db(db_engine, table_name, column_name='datetime')
+    parquet_file_path_list = filter_incremental_file(silver_file_path, max_date_db)
+    df = concat_parquet_files(parquet_file_path_list)
+    save_to_db(db_engine, df, table_name)

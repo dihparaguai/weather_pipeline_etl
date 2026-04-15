@@ -24,9 +24,11 @@ def test_get_max_date_from_db_returns_error_when_table_not_exists(monkeypatch):
     # Injeção de dependências
     monkeypatch.setattr("src.jobs.load.inspect", lambda engine: MockInspector())
     
-    # Act and Assert
-    with pytest.raises(ValueError):
-        get_max_date_from_db(db_engine=FakeEngine(), table_name='tb_weather_data', column_name='datetime')
+    # Act
+    result = get_max_date_from_db(db_engine=FakeEngine(), table_name='tb_weather_data', column_name='datetime')
+
+    # Assert
+    assert result == None
 
 def test_get_max_date_from_db_returns_error_when_column_not_exists(monkeypatch):
     """
@@ -42,9 +44,11 @@ def test_get_max_date_from_db_returns_error_when_column_not_exists(monkeypatch):
     
     monkeypatch.setattr("src.jobs.load.inspect", lambda engine: MockInspector())
 
-    # Act and Assert
-    with pytest.raises(ValueError):
-        get_max_date_from_db(db_engine=FakeEngine(), table_name='tb_weather_data', column_name='datetime')
+    # Act
+    result = get_max_date_from_db(db_engine=FakeEngine(), table_name='tb_weather_data', column_name='datetime')
+
+    # Assert
+    assert result == None    
 
 def test_get_max_date_from_db_returns_date_when_exists(monkeypatch):
     """

@@ -29,8 +29,8 @@ def main():
     logger.info("Transformação Silver concluída.")
     
     # Etapa 3: Carga (Load)
-    # run_load(silver_file_path)
-    # logger.info("Carga Gold concluída.")
+    run_load(silver_file_path='./data/silver', table_name='tb_weather_data')
+    logger.info("Carga Gold concluída.")
     
     logger.info("=== Pipeline Finalizado ===")
 
