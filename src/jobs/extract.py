@@ -5,9 +5,9 @@ from loguru import logger
 from src.modules.weather_api import download_weather_data
 from datetime import date
 
-def run_extract(cities_names_list: list = ["Sao Paulo,BR"], target_date: date = None, bronze_files_path: str = './data/bronze') -> str:
+def run_extract(cities_names_list: list, bronze_folder_path: str, target_date: datetime.date = None) -> str:
     """
-    Chama a API e salva os dados brutos na pasta 'data/bronze'.
+    Chama a API e salva os dados brutos na camada Bronze.
     """
     logger.info("Iniciando a extração dos dados...")
 
@@ -15,9 +15,9 @@ def run_extract(cities_names_list: list = ["Sao Paulo,BR"], target_date: date = 
         target_date = date.today()
     
     # Cria subpasta com a data de extração
-    folder_bronze_path = os.path.join(bronze_files_path, target_date.strftime('%Y%m%d'))
+    folder_bronze_path_partitioned = os.path.join(bronze_folder_path, target_date.strftime('%Y%m%d'))
     
-    os.makedirs(folder_bronze_path, exist_ok=True)
+    os.makedirs(folder_bronze_path_partitioned, exist_ok=True)
 
     for city_name in cities_names_list:
         try:
@@ -29,7 +29,7 @@ def run_extract(cities_names_list: list = ["Sao Paulo,BR"], target_date: date = 
             
             # Monta o nome do arquivo da cidade
             file_name = f"{city_name_formatted}.json"
-            file_path = os.path.join(folder_bronze_path, file_name)
+            file_path = os.path.join(folder_bronze_path_partitioned, file_name)
             
             # Salva o dicionário JSON inteiro no arquivo
             with open(file_path, "w", encoding="utf-8") as f:
@@ -41,4 +41,4 @@ def run_extract(cities_names_list: list = ["Sao Paulo,BR"], target_date: date = 
 
     logger.info("=== Extração concluída com sucesso! ===")
 
-    return folder_bronze_path
+    return folder_bronze_path_partitioned

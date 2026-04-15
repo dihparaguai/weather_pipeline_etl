@@ -21,15 +21,15 @@ def main():
     target_date = date.today()
 
     # Etapa 1: Extração (Extract)
-    bronze_folder_path = run_extract(cities_names_list, target_date, './data/bronze')
+    bronze_folder_path = run_extract(cities_names_list=cities_names_list, bronze_folder_path='./data/bronze', target_date=target_date)
     logger.info(f"Extração Bronze concluída.")
     
     # Etapa 2: Transformação (Transform)
-    silver_file_path = run_transform(bronze_folder_path, './data/silver')
+    silver_folder_path = run_transform(bronze_file_path=bronze_folder_path, silver_folder_path='./data/silver')
     logger.info("Transformação Silver concluída.")
     
     # Etapa 3: Carga (Load)
-    run_load(silver_file_path='./data/silver', table_name='tb_weather_data')
+    run_load(silver_folder_path='./data/silver', table_name='tb_weather_data')
     logger.info("Carga Gold concluída.")
     
     logger.info("=== Pipeline Finalizado ===")

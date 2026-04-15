@@ -101,7 +101,7 @@ def save_to_db(db_engine, df: pd.DataFrame, table_name: str):
 
     logger.info("Dados adicionados com sucesso!")
 
-def run_load(silver_file_path: str = '../../data/silver', table_name: str = 'tb_weather_data'):
+def run_load(silver_folder_path: str, table_name: str = 'tb_weather_data'):
     """
     Executa as funções de carga em sequência.
     """
@@ -110,6 +110,6 @@ def run_load(silver_file_path: str = '../../data/silver', table_name: str = 'tb_
 
     logger.info(f"=== Iniciando a etapa de Carga no PostgreSQL ===")
     max_date_db = get_max_date_from_db(db_engine, table_name, column_name='datetime')
-    parquet_file_path_list = filter_incremental_file(silver_file_path, max_date_db)
+    parquet_file_path_list = filter_incremental_file(silver_folder_path, max_date_db)
     df = concat_parquet_files(parquet_file_path_list)
     save_to_db(db_engine, df, table_name)
