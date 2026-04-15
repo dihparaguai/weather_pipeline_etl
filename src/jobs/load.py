@@ -96,6 +96,10 @@ def save_to_db(db_engine, df: pd.DataFrame, table_name: str):
     """
     logger.info(f"Adicionando os dados do DataFrame na tabela '{table_name}'...")
 
+    if df is None:
+        logger.info("Nenhum dado para adicionar no banco de dados.")
+        return
+
     # Usa 'append' do Pandas para apenas adicionar sem apagar os dias anteriores
     df.to_sql(name=table_name, con=db_engine, if_exists='append', index=False)
 

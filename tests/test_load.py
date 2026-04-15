@@ -184,3 +184,19 @@ def test_concat_parquet_files_returns_dataframe_concatenated(monkeypatch):
     
     # Assert
     assert result.equals(pd.DataFrame({'city': ['Sao Paulo', 'Sao Paulo'], 'temperature': [25.0, 25.0]}))
+    
+# ================================================================
+# Testes da função save_to_db
+# ================================================================
+
+from src.jobs.load import save_to_db
+
+def test_save_to_db_returns_none_when_no_data(monkeypatch):
+    """
+    CENÁRIO: Valida se a função retorna None quando não há dados para adicionar no banco.
+    """  
+    # Act
+    result = save_to_db(df=None, db_engine=FakeEngine(), table_name='tb_weather_data')
+    
+    # Assert
+    assert result is None 
