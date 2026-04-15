@@ -1,7 +1,7 @@
 import os
 import pandas as pd
 from loguru import logger
-from src.modules.postgres_utils import PostgresUtils
+from src.modules.sqlalchemy_engine import SQLAlchemyEngine
 from sqlalchemy import text, inspect
 from datetime import date, datetime
 
@@ -109,7 +109,7 @@ def run_load(silver_folder_path: str, table_name: str = 'tb_weather_data'):
     """
     Executa as funções de carga em sequência.
     """
-    db_connection = PostgresUtils()
+    db_connection = SQLAlchemyEngine()
     db_engine = db_connection.engine
 
     logger.info(f"=== Iniciando a etapa de Carga no PostgreSQL ===")

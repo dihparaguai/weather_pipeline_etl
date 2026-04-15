@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 # Carrega as variáveis de ambiente
 load_dotenv()
 
-class PostgresUtils:
+class SQLAlchemyEngine:
     """
     Controla conexões com o PostgreSQL usando SQLAlchemy para as cargas de dados.
     Esta classe assume que o Banco e o Usuário já foram devidamente criados previamente.
@@ -48,4 +48,4 @@ class PostgresUtils:
         logger.info(f"Conexão estabelecida com sucesso!")
         return engine
 
-PostgresUtils()
+SQLAlchemyEngine()
