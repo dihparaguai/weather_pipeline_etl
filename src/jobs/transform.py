@@ -4,7 +4,7 @@ import pandas as pd
 from typing import List
 from loguru import logger
 import pyarrow
-from datetime import date
+from datetime import date, datetime
 
 
 datetime_columns_to_cast = ['datetime', 'nascer_do_sol', 'por_do_sol']
@@ -130,6 +130,44 @@ def save_to_silver_parquet(df: pd.DataFrame, silver_folder_path: str, target_dat
     
     logger.info(f"Dados salvos com sucesso na camada Silver!")
     return file_path
+
+def get_max_date_from_silver(silver_folder_path: str) -> datetime.date:
+    """
+    Inspeciona a camada Silver e busca a maior data já processada.
+    """
+    # Busca a data da última transformação em Silver
+    logger.info("Buscando a data da última transformação em Silver...")
+    if not os.path.exists(silver_folder_path):
+        logger.warning(f"O diretório {silver_folder_path} não existe.")
+        return None
+    
+    # Lista os arquivos Parquet na camada Silver
+    parquet_list = [p for p in os.listdir(silver_folder_path) if p.endswith('.parquet')]
+    if not parquet_list:
+        logger.warning(f"Nenhum arquivo Parquet foi localizado na camada Silver.")
+        return None
+
+    # Extrai a data de cada arquivo e armazena em uma lista
+    dates = []
+    for p in parquet_list:
+        date_str = p.split('.')[0]
+        try:
+            parsed_date = datetime.strptime(date_str, '%Y%m%d').date()
+            dates.append(parsed_date)
+            logger.debug(f"Data {parsed_date} adicionada à lista de datas.")
+        except ValueError:
+            logger.error(f"Erro ao converter a data {date_str}.")
+            pass
+
+    # Verifica se a lista de datas não está vazia
+    if not dates:
+        logger.warning(f"Nenhuma data foi encontrada na camada Silver.")
+        return None
+        
+    # Busca a data máxima na lista de datas
+    max_date = max(dates)
+    logger.info(f"Última data encontrada em Silver com sucesso: {max_date} !!!")
+    return max_date
 
 def run_transform(bronze_file_path: str, silver_folder_path: str) -> pd.DataFrame:
     """
