@@ -1,9 +1,12 @@
-import os
+import os, sys
 from loguru import logger
 from src.jobs.extract import run_extract
 from src.jobs.transform import run_transform
 from src.jobs.load import run_load
 from datetime import date
+
+# logger.remove()
+# logger.add(sys.stdout, level="INFO")
 
 def main():
     logger.info("=== Iniciando Pipeline ETL ===")
@@ -25,7 +28,7 @@ def main():
     logger.info(f"Extração Bronze concluída.")
     
     # Etapa 2: Transformação (Transform)
-    silver_folder_path = run_transform(bronze_file_path=bronze_folder_path, silver_folder_path='./data/silver')
+    run_transform(bronze_folder_path='./data/bronze', silver_folder_path='./data/silver')
     logger.info("Transformação Silver concluída.")
     
     # Etapa 3: Carga (Load)

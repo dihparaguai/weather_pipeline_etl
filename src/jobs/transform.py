@@ -115,11 +115,11 @@ def cast_datetime_columns(df: pd.DataFrame, datetime_columns: List[str], timezon
     logger.info(f"Colunas de unix timestamp convertidas para datetime com sucesso!")
     return df
 
-def save_to_silver_parquet(df: pd.DataFrame, silver_folder_path: str, target_date: str) -> str:
+def save_to_silver_parquet(df: pd.DataFrame, silver_folder_path: str, target_date: str):
     """
     Exporta o DataFrame transformado para um arquivo Parquet na camada Silver.
     """
-    logger.info(f"Salvando dados processados na camada Silver: {file_path}...")
+    logger.info(f"Salvando dados processados na camada Silver: {silver_folder_path}...")
     
     os.makedirs(silver_folder_path, exist_ok=True)
 
@@ -129,7 +129,6 @@ def save_to_silver_parquet(df: pd.DataFrame, silver_folder_path: str, target_dat
     df.to_parquet(file_path, engine='pyarrow', index=False)
     
     logger.info(f"Dados salvos com sucesso na camada Silver!")
-    return file_path
 
 def get_max_date_from_silver(silver_folder_path: str) -> datetime.date:
     """
@@ -166,7 +165,8 @@ def get_max_date_from_silver(silver_folder_path: str) -> datetime.date:
         
     # Busca a data máxima na lista de datas
     max_date = max(dates)
-    logger.info(f"Última data encontrada em Silver com sucesso: {max_date} !!!")
+    logger.info(f"Última data encontrada em Silver com sucesso!!!")
+    logger.debug(f"Última data encontrada em Silver: {max_date}")
     return max_date
 
 def filter_incremental_bronze_partitions(bronze_folder_path: str, max_date: datetime.date) -> list:
@@ -205,20 +205,22 @@ def filter_incremental_bronze_partitions(bronze_folder_path: str, max_date: date
     logger.info("Filtro de partições (pastas) novas concluído com sucesso!!!")
     return sorted(valid_folders)
 
-def run_transform(bronze_file_path: str, silver_folder_path: str) -> pd.DataFrame:
+def run_transform(bronze_folder_path: str, silver_folder_path: str) -> pd.DataFrame:
     """
     Executa as funções de transformação em sequência.
     """
     logger.info(f"=== Iniciando transformação dos dados... ===")
 
-    target_date = bronze_file_path.split('/')[-1]
+    max_date_silver = get_max_date_from_silver(silver_folder_path)
+    valid_partitions = filter_incremental_bronze_partitions(bronze_folder_path, max_date_silver)
+
+    for partition_path in valid_partitions:
+        target_date = partition_path.split('/')[-1]
+        df = create_dataframe(partition_path)
+        df = normalize_column(df, column_name='weather')
+        df = drop_columns(df, columns_to_drop=columns_to_drop)
+        df = rename_columns(df, columns_to_rename=columns_to_rename)
+        df = cast_datetime_columns(df, datetime_columns=datetime_columns_to_cast)
+        save_to_silver_parquet(df, silver_folder_path=silver_folder_path, target_date=target_date)
     
-    df = create_dataframe(bronze_file_path)
-    df = normalize_column(df, column_name='weather')
-    df = drop_columns(df, columns_to_drop=columns_to_drop)
-    df = rename_columns(df, columns_to_rename=columns_to_rename)
-    df = cast_datetime_columns(df, datetime_columns=datetime_columns_to_cast)
-    silver_file_path = save_to_silver_parquet(df, silver_folder_path=silver_folder_path, target_date=target_date)
-    
-    logger.info(f"=== Transformação Executada com Sucesso! ===")
-    return silver_file_path
+    logger.info(f"=== Transformação executada com Sucesso! ===")
