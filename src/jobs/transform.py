@@ -9,9 +9,7 @@ from datetime import date, datetime
 
 datetime_columns_to_cast = ['datetime', 'nascer_do_sol', 'por_do_sol']
 
-columns_to_drop = ['base', 'visibility', 'timezone', 'id', 'main.pressure', 'main.sea_level', 'main.grnd_level', 'wind.speed', 'wind.deg', 'clouds.all']
-
-columns_to_rename = {'dt': 'datetime', 'name': 'cidade', 'coord.lon': 'longitude', 'coord.lat': 'latitude', 'main.temp': 'temperatura', 'main.feels_like': 'sensacao_termica', 'main.temp_min': 'temperatura_minima', 'main.temp_max': 'temperatura_maxima', 'main.humidity': 'umidade', 'sys.country': 'pais', 'sys.sunrise': 'nascer_do_sol', 'sys.sunset': 'por_do_sol'}
+columns_to_rename_and_keep = {'dt': 'datetime', 'name': 'cidade', 'coord.lon': 'longitude', 'coord.lat': 'latitude', 'main.temp': 'temperatura', 'main.feels_like': 'sensacao_termica', 'main.temp_min': 'temperatura_minima', 'main.temp_max': 'temperatura_maxima', 'main.humidity': 'umidade', 'sys.country': 'pais', 'sys.sunrise': 'nascer_do_sol', 'sys.sunset': 'por_do_sol'}
 
 
 def create_dataframe(bronze_files_path: str) -> pd.DataFrame:
@@ -48,16 +46,29 @@ def create_dataframe(bronze_files_path: str) -> pd.DataFrame:
     logger.info(f"DataFrame concatenado criado com sucesso!")
     return df_concat
 
-def drop_columns(df: pd.DataFrame, columns_to_drop: List[str]) -> pd.DataFrame:
+def keep_columns(df: pd.DataFrame, columns_to_keep: list) -> pd.DataFrame:
     """
     Remove as colunas desnecessárias do DataFrame.
     """
-    logger.info(f"Removendo as colunas...")
+    logger.info(f"Mantendo apenas as colunas necessárias...")
     
-    df = df.drop(columns=columns_to_drop)
+    # Verifica se as colunas existem no DataFrame
+    columns_exists = [col for col in columns_to_keep if col in df.columns]
     
-    logger.info(f"Colunas removidas com sucesso!")
-    return df
+    # Filtra o DataFrame mantendo apenas as colunas que existem
+    if columns_exists:
+        df_filtered = df.filter(items=columns_to_keep)
+        
+        # Colunas que não foram encontradas
+        columns_not_found = [col for col in columns_to_keep if col not in df.columns]
+        if columns_not_found:
+            logger.warning(f"Colunas não encontradas no DataFrame: {columns_not_found}")
+            
+        logger.info(f"Colunas mantidas com sucesso!")
+        return df_filtered
+    else:
+        logger.error(f"Nenhuma coluna para manter foi encontrada no DataFrame.")
+        return pd.DataFrame()
 
 def rename_columns(df: pd.DataFrame, columns_to_rename: dict) -> pd.DataFrame:
     """
@@ -218,8 +229,8 @@ def run_transform(bronze_folder_path: str, silver_folder_path: str) -> pd.DataFr
         target_date = partition_path.split('/')[-1]
         df = create_dataframe(partition_path)
         df = normalize_column(df, column_name='weather')
-        df = drop_columns(df, columns_to_drop=columns_to_drop)
-        df = rename_columns(df, columns_to_rename=columns_to_rename)
+        df = keep_columns(df, columns_to_keep=list(columns_to_rename_and_keep.keys()))
+        df = rename_columns(df, columns_to_rename=columns_to_rename_and_keep)
         df = cast_datetime_columns(df, datetime_columns=datetime_columns_to_cast)
         save_to_silver_parquet(df, silver_folder_path=silver_folder_path, target_date=target_date)
     
