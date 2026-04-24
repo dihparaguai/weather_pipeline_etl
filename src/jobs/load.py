@@ -15,14 +15,14 @@ def get_max_date_from_db(db_engine, table_name: str, column_name: str) -> dateti
     
     # Verifica se a tabela existe usando o Inspetor
     if not inspector.has_table(table_name):
-        logger.error(f"A tabela '{table_name}' não foi encontrada!")
+        logger.error(f">> A tabela '{table_name}' não foi encontrada, será criada automaticamente.")
         return None
         
     # Verifica se a coluna existe usando o Inspetor
     columns = [col['name'] for col in inspector.get_columns(table_name)]
-    logger.debug(f"Colunas encontradas na tabela '{table_name}': {columns}")
     if column_name not in columns:
-        logger.error(f"A coluna '{column_name}' não foi encontrada na tabela '{table_name}'!")
+        logger.error(f">> A coluna '{column_name}' não foi encontrada na tabela '{table_name}'")
+        logger.debug(f"Colunas encontradas na tabela '{table_name}': {columns}")
         return None
         
     # Executa a extração da data máxima
