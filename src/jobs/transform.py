@@ -169,6 +169,42 @@ def get_max_date_from_silver(silver_folder_path: str) -> datetime.date:
     logger.info(f"Última data encontrada em Silver com sucesso: {max_date} !!!")
     return max_date
 
+def filter_incremental_bronze_partitions(bronze_folder_path: str, max_date: datetime.date) -> list:
+    """
+    Inspeciona a camada Bronze para identificar quais partições (pastas) não foram processadas.
+    """
+    # Busca as partições (pastas) na camada Bronze
+    logger.info("Filtrando as novas partições (pastas) disponíveis em Bronze...")
+    if not os.path.exists(bronze_folder_path):
+        logger.warning(f"O diretório {bronze_folder_path} não existe.")
+        return []
+
+    # Lista as partições (pastas) na camada Bronze (e verifica se é um diretório)
+    folder_list = [f for f in os.listdir(bronze_folder_path) if os.path.isdir(os.path.join(bronze_folder_path, f))] 
+    if not folder_list:
+        logger.info("Nenhuma partição encontrada na camada Bronze.")
+        return []
+
+    # Se não houver data máxima no banco de dados, retorna todas as partições (pastas)
+    if max_date is None:
+        logger.info("Não há dados na camada Silver.")
+        return [os.path.join(bronze_folder_path, f) for f in folder_list]
+
+    # Verifica se a data de cada partição (pasta) é maior que a data máxima encontrada
+    valid_folders = []
+    for f in folder_list:
+        try:
+            folder_date = datetime.strptime(f, '%Y%m%d').date()
+            if folder_date > max_date:
+                valid_folders.append(os.path.join(bronze_folder_path, f))
+                logger.debug(f"Partição {f} adicionada à lista de partições a serem processadas.")
+        except ValueError:
+            logger.error(f"Erro ao converter a data {f}.")
+            pass
+            
+    logger.info("Filtro de partições (pastas) novas concluído com sucesso!!!")
+    return sorted(valid_folders)
+
 def run_transform(bronze_file_path: str, silver_folder_path: str) -> pd.DataFrame:
     """
     Executa as funções de transformação em sequência.
