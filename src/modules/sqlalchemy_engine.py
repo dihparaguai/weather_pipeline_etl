@@ -47,5 +47,3 @@ class SQLAlchemyEngine:
         
         logger.info(f"Conexão estabelecida com sucesso!")
         return engine
-
-SQLAlchemyEngine()
