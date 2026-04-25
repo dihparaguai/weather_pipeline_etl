@@ -38,4 +38,30 @@ class AzureDatalakeService:
             logger.error(f"Falha ao conectar ao Azure Data Lake Storage Gen2: {e}")
             raise
 
-AzureDatalakeService()
+    def upload_file_to_datalake(self, container_name: str, layer_folder: str, cloud_and_local_file_path_name_dict: dict):
+        """
+        Faz o upload de um arquivo para o Azure Data Lake Storage Gen2.
+        """
+        logger.info("Iniciando upload do arquivo...")
+
+        # Obtém o caminho absoluto da raiz do projeto
+        base_dir = os.path.dirname(os.path.abspath(__file__))
+
+        logger.debug(f"Container: {container_name}, Pasta Camada: {layer_folder}")
+        
+        try:
+            container_client = self.client.get_file_system_client(container_name)
+
+            for cloud_file_path_name, local_file_path_name in cloud_and_local_file_path_name_dict.items():
+                logger.debug(f"Caminho do arquivo na cloud: {cloud_file_path_name}, Caminho do arquivo local: {local_file_path_name}")
+                
+
+                file_client = container_client.get_file_client(f"{layer_folder}/{cloud_file_path_name}")
+                with open(local_file_path_name, "rb") as f:
+                    file_client.upload_data(f, overwrite=True)
+
+            logger.info("Upload realizado com sucesso!!!")
+            logger.debug(f"Total de arquivos adicionados: {len(cloud_and_local_file_path_name_dict.items())}")
+        except Exception as e:
+            logger.error(f"Falha ao realizar upload do arquivo: {e}")
+            raise
