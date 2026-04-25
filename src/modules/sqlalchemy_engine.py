@@ -15,7 +15,8 @@ class SQLAlchemyEngine:
     """
     
     def __init__(self):
-        # Credenciais Definitivas extraídas do .env
+        logger.info("Instanciando a classe SQLAlchemyEngine...")
+        # Credenciais extraídas do .env
         self.user = os.getenv("PG_USER")
         self.password = quote_plus(os.getenv("PG_PASSWORD"))
         self.host = os.getenv("PG_HOST")
@@ -24,6 +25,7 @@ class SQLAlchemyEngine:
         
         # Deixa a engine da classe pré-pronta para ser usada com o to_sql do Pandas
         self.engine = self._create_engine()
+        logger.info("Classe SQLAlchemyEngine instanciada com sucesso!!!")
 
     def _create_engine(self):
         """
