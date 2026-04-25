@@ -100,10 +100,13 @@ def save_to_db(db_engine, df: pd.DataFrame, table_name: str):
         logger.info("Nenhum dado para adicionar no banco de dados.")
         return
 
-    # Usa 'append' do Pandas para apenas adicionar sem apagar os dias anteriores
-    df.to_sql(name=table_name, con=db_engine, if_exists='append', index=False)
-
-    logger.info("Dados adicionados com sucesso!")
+    try :
+        # Usa 'append' do Pandas para apenas adicionar sem apagar os dias anteriores
+        df.to_sql(name=table_name, con=db_engine, if_exists='append', index=False)
+        logger.info("Dados adicionados com sucesso!!!")
+    except Exception as e:
+        logger.error(f">> Falha ao adicionar dados no banco de dados: {e}")
+        raise
 
 def run_load(silver_folder_path: str, table_name: str = 'tb_weather_data'):
     """

@@ -75,7 +75,6 @@ def test_get_max_date_from_db_returns_date_when_exists(monkeypatch):
     # Assert
     assert str(result) == '2026-04-12'
 
-
 def test_get_max_date_from_db_returns_none_when_table_empty(monkeypatch):
     """
     CENÁRIO: Valida se a função retorna None quando a query SQL iterar tabela vazia.
