@@ -2,6 +2,39 @@ import os
 from loguru import logger
 from datetime import datetime, date
 
+def get_max_date_from_datalake_partitions(data_lake_partition_list: list) -> datetime.date:
+    """
+    Inspeciona a camada Bronze e busca a maior data já processada.
+    """
+    logger.info(f"Buscando a data da última ingestão na lista fornecida...")
+
+    if not data_lake_partition_list:
+        logger.warning(f"Nenhuma partição encontrada na lista fornecida.")
+        return None
+
+    # Extrai a data de cada partição (pasta) e armazena em uma lista
+    dates = []
+    for data_lake_partition in data_lake_partition_list:
+        partition_date = data_lake_partition.replace(data_lake_partition.split("/")[0] + "/", "")
+        try:
+            parsed_date = datetime.strptime(partition_date, '%Y/%m/%d').date()
+            dates.append(parsed_date)
+        except ValueError:
+            logger.error(f"Erro ao converter a data {partition_date}.")
+            pass
+    logger.debug(f"Lista de datas extraídas: {[date.strftime('%Y-%m-%d') for date in dates]}")    
+
+    # Verifica se a lista de datas não está vazia
+    if not dates:
+        logger.warning(f"Nenhuma data foi encontrada na lista fornecida.")
+        return None
+        
+    # Busca a data máxima na lista de datas
+    max_date = max(dates)
+    logger.info(f"Última data encontrada em Bronze com sucesso!!!")
+    logger.debug(f"Última data encontrada em Bronze: {max_date}")
+    return max_date       
+    
 def get_max_date_from_bronze(bronze_folder_path: str) -> datetime.date:
     """
     Inspeciona a camada Bronze e busca a maior data já processada.
@@ -113,7 +146,7 @@ def filter_incremental_bronze_partitions(bronze_folder_path: str, max_date: date
             pass
             
     logger.info("Filtro de partições (pastas) novas concluído com sucesso!!!")
-    return sorted(valid_folders)
+    return valid_folders
 
 def filter_incremental_silver_files(silver_folder_path: str, max_date: datetime.date) -> list:
     """

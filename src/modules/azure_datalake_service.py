@@ -65,3 +65,23 @@ class AzureDatalakeService:
         except Exception as e:
             logger.error(f"Falha ao realizar upload do arquivo: {e}")
             raise
+
+    def get_partitions_from_layer_folder(self, container_name: str, layer_folder: str) -> list:
+        """
+        Lista as partições (pastas) de uma camada do Azure Data Lake Storage Gen2.
+        """
+        logger.info(f"Listando partições da camada {layer_folder} no container {container_name}...")
+        try:
+            container_client = self.client.get_file_system_client(container_name)
+            partitions = container_client.get_directory_client(layer_folder)
+            partition_list = [partition.name for partition in partitions.get_paths() if partition.is_directory]
+
+            # Mantém apenas as partições que são de ano, mês e dia
+            partition_list = [partition for partition in partition_list if partition.count('/') == 3]
+
+            logger.info(f"Lista de partições da camada {layer_folder} obtida com sucesso!!!")
+            logger.debug(f"Lista de partições: {partition_list}")
+            return partition_list
+        except Exception as e:
+            logger.error(f"Falha ao listar partições da camada {layer_folder}: {e}")
+            raise

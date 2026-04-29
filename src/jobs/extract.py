@@ -1,9 +1,38 @@
 import json
 import os
-from datetime import datetime
+from datetime import datetime, date
 from loguru import logger
 from src.modules.weather_api import download_weather_data
-from datetime import date
+from src.modules.azure_datalake_service import AzureDatalakeService
+from src.modules import file_incremental_filtering as fif
+
+def upload_bronze_files_to_datalake(partition_folder_list: list):
+    """
+    Faz o upload dos arquivos para camada Bronze do Azure Data Lake Storage.
+    """
+    logger.info("Iniciando o upload dos arquivos para a camada Bronze do Azure Data Lake Storage...")
+    azure_datalake_service = AzureDatalakeService()
+    cloud_and_local_file_path_name_dict = {}
+
+    for partition_folder in partition_folder_list:
+        file_list = [file_name for file_name in os.listdir(partition_folder) if file_name.endswith('.json')]  
+        logger.debug(f"Encontrados {len(file_list)} arquivos na partição {partition_folder}.")
+        
+        if not file_list:
+            logger.info(f"Nenhum arquivo encontrado na partição {partition_folder}.")
+            continue # Pula para a próxima partição
+        
+        for file_name in file_list:
+            local_file_path_name = os.path.join(partition_folder, file_name)
+            partition_date_folder = partition_folder.split('/')[-1]
+            partition_date_folder_formated = f"{partition_date_folder[:4]}/{partition_date_folder[4:6]}/{partition_date_folder[6:]}"
+            cloud_and_local_file_path_name_dict[f"{partition_date_folder_formated}/{file_name}"] = local_file_path_name
+
+    azure_datalake_service.upload_file_to_datalake(
+        container_name='weather',
+        layer_folder='bronze',
+        cloud_and_local_file_path_name_dict=cloud_and_local_file_path_name_dict
+    )
 
 def run_extract(cities_names_list: list, bronze_folder_path: str, target_date: datetime.date = None) -> str:
     """
