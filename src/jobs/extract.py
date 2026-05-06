@@ -6,14 +6,26 @@ from src.modules.weather_api import download_weather_data
 from src.modules.azure_datalake_service import AzureDatalakeService
 from src.modules import file_incremental_filtering as fif
 
-def upload_bronze_files_to_datalake(partition_folder_list: list):
+def upload_bronze_files_to_datalake(bronze_folder_path: str):
     """
     Faz o upload dos arquivos para camada Bronze do Azure Data Lake Storage.
     """
     logger.info("Iniciando o upload dos arquivos para a camada Bronze do Azure Data Lake Storage...")
-    azure_datalake_service = AzureDatalakeService()
-    cloud_and_local_file_path_name_dict = {}
 
+    container_name='weather'
+    layer_folder='bronze'
+
+    az_dl = AzureDatalakeService()
+
+    data_lake_partition_list = az_dl.get_partitions_from_layer_folder(
+        container_name=container_name,
+        layer_folder=layer_folder
+    )
+
+    max_date_from_datalake_partitions = fif.get_max_date_from_datalake_partitions(data_lake_partition_list)
+    partition_folder_list = fif.filter_incremental_bronze_partitions(bronze_folder_path, max_date_from_datalake_partitions)
+
+    cloud_and_local_file_path_name_dict = {}
     for partition_folder in partition_folder_list:
         file_list = [file_name for file_name in os.listdir(partition_folder) if file_name.endswith('.json')]  
         logger.debug(f"Encontrados {len(file_list)} arquivos na partição {partition_folder}.")
@@ -28,13 +40,14 @@ def upload_bronze_files_to_datalake(partition_folder_list: list):
             partition_date_folder_formated = f"{partition_date_folder[:4]}/{partition_date_folder[4:6]}/{partition_date_folder[6:]}"
             cloud_and_local_file_path_name_dict[f"{partition_date_folder_formated}/{file_name}"] = local_file_path_name
 
-    azure_datalake_service.upload_file_to_datalake(
-        container_name='weather',
-        layer_folder='bronze',
+    az_dl.upload_file_to_datalake(
+        container_name=container_name,
+        layer_folder=layer_folder,
         cloud_and_local_file_path_name_dict=cloud_and_local_file_path_name_dict
     )
+    logger.info("Upload realizado com sucesso!!!")
 
-def run_extract(cities_names_list: list, bronze_folder_path: str, target_date: datetime.date = None) -> str:
+def extract_weather(cities_names_list: list, bronze_folder_path: str, target_date: datetime.date = None):
     """
     Chama a API e salva os dados brutos na camada Bronze.
     """
@@ -51,9 +64,7 @@ def run_extract(cities_names_list: list, bronze_folder_path: str, target_date: d
     for city_name in cities_names_list:
         try:
             logger.debug(f"Chamando a função download_weather_data com a cidade: '{city_name}'")
-            
             data = download_weather_data(target_date, city_name)
-            
             city_name_formatted = city_name.replace(",", "_").replace(" ", "_")
             
             # Monta o nome do arquivo da cidade
@@ -68,6 +79,13 @@ def run_extract(cities_names_list: list, bronze_folder_path: str, target_date: d
         except Exception as e:
             raise Exception(f"Erro durante a extração: {e}")
 
-    logger.info("=== Extração concluída com sucesso! ===")
+    logger.info("Extração concluída com sucesso!!!")
+    logger.debug(f"Partição criada: {folder_bronze_path_partitioned}")
 
-    return folder_bronze_path_partitioned
+def run_extract(cities_names_list: list, bronze_folder_path: str, target_date: datetime.date = None):
+    logger.info("=== Iniciando etapa de Extração de dados da API Weather... ===")
+
+    extract_weather(cities_names_list, bronze_folder_path, target_date)
+    upload_bronze_files_to_datalake(bronze_folder_path)
+
+    logger.info("=== Etapa de Extração de dados da API Weather executada com sucesso!!! ===")
