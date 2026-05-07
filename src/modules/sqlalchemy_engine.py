@@ -35,17 +35,18 @@ class SQLAlchemyEngine:
         
         # Padrão nativo do SQLAlchemy
         conn_str = f"postgresql+psycopg2://{self.user}:{self.password}@{self.host}:{self.port}/{self.dbname}"
-        logger.debug(f"String de conexão: {conn_str}")
-        engine = create_engine(conn_str)
+        safe_conn_str = f"postgresql+psycopg2://{self.user}:********@{self.host}:{self.port}/{self.dbname}"
+        logger.debug(f"String de conexão: {safe_conn_str}")
+        
         
         try:
+            engine = create_engine(conn_str)
             with engine.connect() as conn:
                 logger.debug(f"Testando conexão com o PostgreSQL")
                 conn.execute(text("SELECT 1"))
             
+            logger.info(f"Conexão estabelecida com sucesso!")
+            return engine
         except Exception as e:
             logger.error(f"Falha ao conectar ao PostgreSQL: {e}")
             raise
-        
-        logger.info(f"Conexão estabelecida com sucesso!")
-        return engine
