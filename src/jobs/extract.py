@@ -61,9 +61,9 @@ def extract_weather(cities_names_list: list, bronze_folder_path: str, target_dat
     
     os.makedirs(folder_bronze_path_partitioned, exist_ok=True)
 
+    logger.debug(f"Chamando a função download_weather_data para as cidades: {cities_names_list}")
     for city_name in cities_names_list:
         try:
-            logger.debug(f"Chamando a função download_weather_data com a cidade: '{city_name}'")
             data = download_weather_data(target_date, city_name)
             city_name_formatted = city_name.replace(",", "_").replace(" ", "_")
             

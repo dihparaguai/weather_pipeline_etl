@@ -112,7 +112,7 @@ def run_load(silver_folder_path: str, table_name: str = 'tb_weather_data'):
     """
     Executa as funções de carga em sequência.
     """
-    logger.info(f"=== Iniciando a etapa de Carga no PostgreSQL ===")
+    logger.info(f"=== Iniciando a etapa de Carga no PostgreSQL... ===")
     db_connection = SQLAlchemyEngine()
     db_engine = db_connection.engine
 
@@ -122,4 +122,4 @@ def run_load(silver_folder_path: str, table_name: str = 'tb_weather_data'):
     save_to_db(db_engine, df, table_name)
 
     db_engine.dispose()
-    logger.info(f"=== Carga no PostgreSQL executada com sucesso! ===")
+    logger.info(f"=== Etapa de Carga no PostgreSQL executada com sucesso!!! ===")

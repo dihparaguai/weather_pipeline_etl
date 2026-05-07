@@ -96,11 +96,10 @@ def get_max_date_from_silver(silver_folder_path: str) -> datetime.date:
         try:
             parsed_date = datetime.strptime(date_str, '%Y%m%d').date()
             dates.append(parsed_date)
-            logger.debug(f"Data {parsed_date} adicionada à lista de datas.")
         except ValueError:
             logger.error(f"Erro ao converter a data {date_str}.")
             pass
-
+    logger.debug(f"Lista de datas extraídas: {[date.strftime('%Y-%m-%d') for date in dates]}")
     # Verifica se a lista de datas não está vazia
     if not dates:
         logger.warning(f"Nenhuma data foi encontrada na camada Silver.")
@@ -140,19 +139,19 @@ def filter_incremental_bronze_partitions(bronze_folder_path: str, max_date: date
             folder_date = datetime.strptime(f, '%Y%m%d').date()
             if folder_date > max_date:
                 valid_folders.append(os.path.join(bronze_folder_path, f))
-                logger.debug(f"Partição {f} adicionada à lista de partições a serem processadas.")
         except ValueError:
             logger.error(f"Erro ao converter a data {f}.")
             pass
             
     logger.info("Filtro de partições (pastas) novas concluído com sucesso!!!")
+    logger.debug(f"Lista de partições (pastas) filtradas: {valid_folders}")
     return valid_folders
 
 def filter_incremental_silver_files(silver_folder_path: str, max_date: datetime.date) -> list:
     """
     Filtra os arquivos na camada Silver, retornando apenas os paths dos arquivos a serem incrementados no Banco.
     """
-    logger.info("Buscando arquivos Parquet na camada Silver para incrementar...")
+    logger.info("Filtrando os arquivos Parquet na camada Silver para incrementar...")
     parquet_file_path_list = [p for p in os.listdir(silver_folder_path) if p.endswith('.parquet')]
 
     # Se não houver arquivos na camada Silver, retorna uma lista vazia
@@ -174,8 +173,9 @@ def filter_incremental_silver_files(silver_folder_path: str, max_date: datetime.
         file_date = datetime.strptime(file_date_str, '%Y%m%d').date()
         
         if file_date > max_date:
+            # String de cada arquivo no formato ./YYYYMMDD.parquet
             parquet_file_path_list_to_increment.append(os.path.join(silver_folder_path, p))
-            logger.debug(f"Arquivo {p} adicionado à lista de incremento.")
             
-    logger.info(f"{len(parquet_file_path_list_to_increment)} arquivo(s) para incrementar.")
+    logger.info(f"Arquivos Parquet filtrados com sucesso!!!")
+    logger.debug(f"Lista de arquivos Parquet filtrados: {parquet_file_path_list_to_increment}")
     return parquet_file_path_list_to_increment
