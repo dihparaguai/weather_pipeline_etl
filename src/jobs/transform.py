@@ -1,10 +1,11 @@
 import os
 import json
-import pandas as pd
-from typing import List
-from loguru import logger
 import pyarrow
+import pandas as pd
+from loguru import logger
 from datetime import date, datetime
+from src.modules.azure_datalake_service import AzureDatalakeService
+from src.modules import file_incremental_filtering as fif
 
 
 datetime_columns_to_cast = ['datetime', 'nascer_do_sol', 'por_do_sol']
@@ -97,19 +98,20 @@ def normalize_column(df: pd.DataFrame, column_name: str = 'weather') -> pd.DataF
 
         # Renomeia as colunas adicionando o prefixo 'weather_'
         df_column_list_renamed = df_column_list_normalized.add_prefix(f'{column_name}_')
-
+        
         # Junta na tabela matriz horizontalmente (axis=1) e apaga a que continha a array
         df = pd.concat([df, df_column_list_renamed], axis=1)
         df = df.drop(columns=[column_name], errors='ignore')
         
         logger.info(f"Colunas de {column_name} explodidas com sucesso!")
+        logger.debug(f"Colunas explodidas: {df_column_list_renamed.columns.tolist()}")
         return df
     
     except Exception as e:
         logger.error(f"Erro na explosão JSON do array '{column_name}': {e}")
         raise
 
-def cast_datetime_columns(df: pd.DataFrame, datetime_columns: List[str], timezone: str = 'America/Sao_Paulo') -> pd.DataFrame:
+def cast_datetime_columns(df: pd.DataFrame, datetime_columns: list, timezone: str = 'America/Sao_Paulo') -> pd.DataFrame:
     """
     Converte uma lista de colunas (unix timestamp/segundos) para datetime no fuso horário local.
     """
@@ -130,7 +132,7 @@ def save_to_silver_parquet(df: pd.DataFrame, silver_folder_path: str, target_dat
     """
     Exporta o DataFrame transformado para um arquivo Parquet na camada Silver.
     """
-    logger.info(f"Salvando dados processados na camada Silver: {silver_folder_path}...")
+    logger.info(f"Salvando dados processados na camada Silver...")
     
     os.makedirs(silver_folder_path, exist_ok=True)
 
@@ -141,89 +143,47 @@ def save_to_silver_parquet(df: pd.DataFrame, silver_folder_path: str, target_dat
     
     logger.info(f"Dados salvos com sucesso na camada Silver!")
 
-def get_max_date_from_silver(silver_folder_path: str) -> datetime.date:
+def upload_silver_files_to_datalake(silver_folder_path: str):
     """
-    Inspeciona a camada Silver e busca a maior data já processada.
+    Faz o upload dos arquivos para camada Silver do Azure Data Lake Storage.
     """
-    # Busca a data da última transformação em Silver
-    logger.info("Buscando a data da última transformação em Silver...")
-    if not os.path.exists(silver_folder_path):
-        logger.warning(f"O diretório {silver_folder_path} não existe.")
-        return None
-    
-    # Lista os arquivos Parquet na camada Silver
-    parquet_list = [p for p in os.listdir(silver_folder_path) if p.endswith('.parquet')]
-    if not parquet_list:
-        logger.warning(f"Nenhum arquivo Parquet foi localizado na camada Silver.")
-        return None
+    logger.info("Iniciando o upload dos arquivos para a camada Silver do Azure Data Lake Storage...")
 
-    # Extrai a data de cada arquivo e armazena em uma lista
-    dates = []
-    for p in parquet_list:
-        date_str = p.split('.')[0]
-        try:
-            parsed_date = datetime.strptime(date_str, '%Y%m%d').date()
-            dates.append(parsed_date)
-            logger.debug(f"Data {parsed_date} adicionada à lista de datas.")
-        except ValueError:
-            logger.error(f"Erro ao converter a data {date_str}.")
-            pass
+    container_name='weather'
+    layer_folder='silver'
 
-    # Verifica se a lista de datas não está vazia
-    if not dates:
-        logger.warning(f"Nenhuma data foi encontrada na camada Silver.")
-        return None
-        
-    # Busca a data máxima na lista de datas
-    max_date = max(dates)
-    logger.info(f"Última data encontrada em Silver com sucesso!!!")
-    logger.debug(f"Última data encontrada em Silver: {max_date}")
-    return max_date
+    az_dl = AzureDatalakeService()
 
-def filter_incremental_bronze_partitions(bronze_folder_path: str, max_date: datetime.date) -> list:
-    """
-    Inspeciona a camada Bronze para identificar quais partições (pastas) não foram processadas.
-    """
-    # Busca as partições (pastas) na camada Bronze
-    logger.info("Filtrando as novas partições (pastas) disponíveis em Bronze...")
-    if not os.path.exists(bronze_folder_path):
-        logger.warning(f"O diretório {bronze_folder_path} não existe.")
-        return []
+    data_lake_partition_list = az_dl.get_partitions_from_layer_folder(
+        container_name=container_name,
+        layer_folder=layer_folder
+    )
 
-    # Lista as partições (pastas) na camada Bronze (e verifica se é um diretório)
-    folder_list = [f for f in os.listdir(bronze_folder_path) if os.path.isdir(os.path.join(bronze_folder_path, f))] 
-    if not folder_list:
-        logger.info("Nenhuma partição encontrada na camada Bronze.")
-        return []
+    max_date_from_datalake_partitions = fif.get_max_date_from_datalake_partitions(data_lake_partition_list)
+    parquet_file_path_list = fif.filter_incremental_silver_files(silver_folder_path, max_date_from_datalake_partitions)
 
-    # Se não houver data máxima no banco de dados, retorna todas as partições (pastas)
-    if max_date is None:
-        logger.info("Não há dados na camada Silver.")
-        return [os.path.join(bronze_folder_path, f) for f in folder_list]
+    cloud_and_local_file_path_name_dict = {}
+    for parquet_file_path in parquet_file_path_list:
+        parquet_file_name = parquet_file_path.split('/')[-1] # from "./silver/20221020.parquet" to "20221020.parquet"
+        partition_date_file = parquet_file_name.split('.')[0] # from "20221020.parquet" to "20221020"
+        partition_date_file_formated = f"{partition_date_file[:4]}/{partition_date_file[4:6]}/{partition_date_file[6:]}" # from "20221020" to "2022/10/20"
+        cloud_and_local_file_path_name_dict[f"{partition_date_file_formated}/{parquet_file_name}"] = parquet_file_path
 
-    # Verifica se a data de cada partição (pasta) é maior que a data máxima encontrada
-    valid_folders = []
-    for f in folder_list:
-        try:
-            folder_date = datetime.strptime(f, '%Y%m%d').date()
-            if folder_date > max_date:
-                valid_folders.append(os.path.join(bronze_folder_path, f))
-                logger.debug(f"Partição {f} adicionada à lista de partições a serem processadas.")
-        except ValueError:
-            logger.error(f"Erro ao converter a data {f}.")
-            pass
-            
-    logger.info("Filtro de partições (pastas) novas concluído com sucesso!!!")
-    return sorted(valid_folders)
+    az_dl.upload_file_to_datalake(
+        container_name=container_name,
+        layer_folder=layer_folder,
+        cloud_and_local_file_path_name_dict=cloud_and_local_file_path_name_dict
+    )
+    logger.info("Upload realizado com sucesso!!!")
 
 def run_transform(bronze_folder_path: str, silver_folder_path: str) -> pd.DataFrame:
     """
     Executa as funções de transformação em sequência.
     """
-    logger.info(f"=== Iniciando transformação dos dados... ===")
+    logger.info(f"=== Iniciando etapa de Transformação dos dados da API Weather... ===")
 
-    max_date_silver = get_max_date_from_silver(silver_folder_path)
-    valid_partitions = filter_incremental_bronze_partitions(bronze_folder_path, max_date_silver)
+    max_date_silver = fif.get_max_date_from_silver(silver_folder_path)
+    valid_partitions = fif.filter_incremental_bronze_partitions(bronze_folder_path, max_date_silver)
 
     for partition_path in valid_partitions:
         target_date = partition_path.split('/')[-1]
@@ -233,5 +193,7 @@ def run_transform(bronze_folder_path: str, silver_folder_path: str) -> pd.DataFr
         df = rename_columns(df, columns_to_rename=columns_to_rename_and_keep)
         df = cast_datetime_columns(df, datetime_columns=datetime_columns_to_cast)
         save_to_silver_parquet(df, silver_folder_path=silver_folder_path, target_date=target_date)
+
+    upload_silver_files_to_datalake(silver_folder_path=silver_folder_path)
     
-    logger.info(f"=== Transformação executada com Sucesso! ===")
+    logger.info(f"=== Etapa de Transformação dos dados da API Weather executada com sucesso!!! ===")
