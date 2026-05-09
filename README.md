@@ -3,29 +3,38 @@
 Este é um projeto de **Engenharia de Dados** desenvolvido como portfólio para simular um cenário real corporativo. Ele demonstra na prática todo o fluxo necessário para extrair, limpar e persistir dados climáticos de forma 100% automática, usando arquitetura ETL e estruturação em camadas Medallion.
 
 ## 1. Objetivo
-Estruturar o fluxo automatizado de extração diária de dados climáticos consumidos da OpenWeatherMap API, promovendo a limpeza e padronização (Camadas Bronze e Silver) e finalizando com a carga persistente em um banco de dados PostgreSQL (Camada Gold). Os dados ingeridos no banco serão posteriormente conectados e visualizados dinamicamente através de dashboards no Power BI.
+Estruturar o fluxo automatizado de extração diária de dados climáticos consumidos da OpenWeatherMap API, promovendo a limpeza e padronização (Camadas Bronze e Silver) e finalizando com a carga persistente em um banco de dados PostgreSQL (Camada Gold). Os dados ingeridos no banco podem ser usados para criar visualizações e dashboards no Power BI ou outras ferramentas.
 
 ## 2. Tecnologias
 - **[Python](https://docs.python.org/3/)**: Linguagem principal para desenvolvimento dos scripts de integração e processamento.
 - **[Docker](https://docs.docker.com/)**: Infraestrutura de conteinerização encarregada pelo isolamento e provisionamento do cluster (orquestrador e banco).
 - **[Apache Airflow](https://airflow.apache.org/docs/)**: Orquestração, monitoramento e agendamento de tarefas via TaskFlow API. Executado via Docker Compose.
-- **[Pandas](https://pandas.pydata.org/docs/)**: Transformação pesada de dados brutos e conversão direta para o formato de alta performance estruturado em `.parquet`.
+- **[Azure Data Lake](https://learn.microsoft.com/azure/storage/blobs/data-lake-storage-introduction)**: Plataforma de armazenamento em nuvem usada para guardar os dados brutos da camada Bronze de forma segura.
+- **[Pandas](https://pandas.pydata.org/docs/)**: Transformação de dados brutos e conversão direta para o formato otimizado em `.parquet`.
 - **[PostgreSQL](https://www.postgresql.org/docs/)**: Servidor de banco de dados relacional atuando como Data Warehouse local.
 - **[SQLAlchemy](https://docs.sqlalchemy.org/)**: Comunicação ORM para inserção de DataFrames de forma automatizada no PostgreSQL.
 - **[Loguru](https://loguru.readthedocs.io/)**: Padronização e estruturação dos logs de execução das rotinas.
+- **[Pytest & Pytest-Cov](https://docs.pytest.org/)**: Framework para criar testes automatizados e medir o quanto o código está coberto (Code Coverage), usando Mocks para simular dependências externas.
 - **[Power BI](https://learn.microsoft.com/power-bi/)**: Ferramenta de visualização final de BI alimentada pela base relacional tratada no PostgresSQL (camada Gold).
 
 ## 3. Estrutura do Projeto
+
+O diagrama abaixo ilustra o fluxo de dados na arquitetura em camadas (Medallion Architecture). O processo inicia com a extração de arquivos da API e salvos na **Camada Bronze (Azure Data Lake e Local)** sob o formato JSON inalterado. Em seguida, os dados passam por processo de transformação, realizando limpeza e padronização, e salvos na **Camada Silver (Também no Azure Data Lake e Local)** sob o formato Parquet. A etapa final persiste os dados modelados na **Camada Gold**, utilizando o **PostgreQL** como um Data Warehouse local, disponibilizando assim a base consolidada para consumo estruturado nos **painéis do Power BI**.
+
+![Diagrama de Arquitetura do Pipeline](architecture_diagram.png)
+
+- Organização física dos diretórios e arquivos do projeto:
 ```text
 weather_pipeline_etl/
 ├── dags/
-│   └── weather_etl_dag.py        # DAG orquestradora lida pelo Airflow
+│   └── weather_etl_dag.py        # DAG orquestradora usada pelo Airflow
 ├── data/
 │   ├── bronze/                   # Camada Bronze: Arquivos brutos JSON da API
 │   └── silver/                   # Camada Silver: Dados limpos em formato Parquet
 ├── src/
 │   ├── jobs/                     # Scripts isolados de E-T-L (extract.py, transform.py, load.py)
-│   └── modules/                  # Conectores e adaptadores auxiliares (API e BD)
+│   └── modules/                  # Conectores, adaptadores, serviços e utilitários (API, BD)
+├── tests/                        # Testes unitários das funções de E-T-L
 ├── docker-compose.yml            # Arquivo de infraestrutura de containers do Airflow
 └── main.py                       # Orquestração manual do pipeline completo via terminal
 ```
@@ -74,12 +83,31 @@ CREATE DATABASE seu_banco_de_dados OWNER seu_usuario_postgres;
 GRANT ALL ON SCHEMA public TO seu_usuario_postgres;
 ```
 
-## 5. Como Executar e Validar
+## 5. Testes Unitários e Qualidade de Código
+Para garantir que o pipeline funcione de forma confiável e funcione com resiliência, foram desenvolvidos testes automatizados em todo o código.
+
+- **Uso de Mocks (Simulações):** Durante os testes, não conectamos de verdade no banco de dados nem baixamos arquivos reais da API. O Pytest usa "Mocks" para simular essas conexões. Isso faz os testes rodarem rápido e de forma segura, sem poluir o banco original.
+- **Prevenção de Falhas:** Os testes validam situações críticas, como: o que fazer se o banco estiver vazio (Dia Zero)? E se a tabela não existir? E se não houver dados novos para baixar? Todos esses cenários foram tratados e validados nos testes, garantindo a integridade do pipeline.
+
+Para executar os testes e ver a taxa de cobertura do código (Coverage):
+```bash
+python -m pytest tests/ -v --cov
+coverage html
+```
+O relatório pode ser visualizado acessando `htmlcov/index.html` em seu navegador, comprovando a eficácia da cobertura de código (`> 85%`).
+
+## 6. Como Executar e Validar
 
 1. Com o Docker aberto na sua máquina, inicie o cluster do Airflow rodando no terminal:
 ```bash
 docker compose up -d
 ```
 2. Assim que subir, acesse a interface visual do orquestrador pelo seu navegador no endereço `http://localhost:8080`.
-3. Ligue a chave da DAG `weather_pipeline_etl`. O Airflow irá disparar, varrer o histórico dos últimos 30 dias de clima e salvar tudo de forma retroativa no seu banco de dados PostgreSQL.
+3. Ligue a chave da DAG `weather_pipeline_etl`. O Airflow irá iniciar a execução do ETL.
 4. Abra o arquivo do **Power BI** (`.pbix`) já fornecido neste projeto. Como os painéis já foram desenvolvidos e modelados, apenas valide as credenciais solicitadas do banco na porta `5432` para atualizar e interagir instantaneamente com os dados extraídos da Camada Gold!
+
+## 7. Melhorias Futuras (Next Steps)
+Para evoluir a arquitetura e escalabilidade do projeto em um cenário de produção avançado, algumas melhorias contínuas podem ser implementadas:
+
+- **Integração e Entrega Contínua (CI/CD):** Implementação de pipelines automatizados (ex: GitHub Actions) para rodar a suíte do Pytest a cada push e fazer o deploy automático.
+- **Uso de Spark:** Substituir o uso do Pandas por Spark para processamento e transformação de dados, permitindo escalabilidade com processamento em paralelo.
